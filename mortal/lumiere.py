@@ -188,24 +188,26 @@ df_resampled['minutes_cumulees'] = (secondes_totale // 60)
 df_resampled['heures_cumulees'] = (secondes_totale // 3600)
 
 
-# --- 9.5 RÉORGANISATION DES COLONNES ---
+# --- 9.5 RÉORGANISATION ET CHANGEMENT D'INDEX ---
 
-# On définit l'ordre que l'on veut (Temps cumulé d'abord, puis le reste)
-colonnes_temps = ['pas_cumule', 'minutes_cumulees', 'secondes_cumulees','heures_cumulees', 'jours_cumules']
+# 1. On transforme l'index actuel (le temps) en une colonne normale
+df_resampled = df_resampled.reset_index()
 
-# On récupère toutes les autres colonnes (température, pluie, etc.)
-# en excluant celles qu'on a déjà mises dans colonnes_temps et l'ancienne 'jour_mois'
-autres_colonnes = []
-for c in df_resampled.columns:
-    if c not in colonnes_temps and c != 'jour_mois':
-        autres_colonnes.append(c)
+# 2. On supprime la colonne 'time' (et 'jour_mois' si elle existe encore)
+# errors='ignore' permet d'éviter un plantage si la colonne est déjà partie
+df_resampled = df_resampled.drop(columns=['time', 'jour_mois'], errors='ignore')
 
-# On réorganise le DataFrame avec le nouvel ordre
+# 3. On définit 'pas_cumule' comme le nouvel index
+df_resampled = df_resampled.set_index('pas_cumule')
+
+# 4. (Optionnel) On réorganise les colonnes de temps restantes pour qu'elles soient au début
+colonnes_temps = ['minutes_cumulees', 'secondes_cumulees','heures_cumulees', 'jours_cumules']
+autres_colonnes = [c for c in df_resampled.columns if c not in colonnes_temps]
 df_resampled = df_resampled[colonnes_temps + autres_colonnes]
 
 # --- 8. EXPORT EN CSV ---
 # On garde index=True pour avoir la nouvelle colonne de temps
-df_resampled.to_csv('avec_sec_heure_etc_interpol_5min_date_fmt_api_base_Garou_moyenne.csv', index=True, index_label='time', encoding='utf-8')
+df_resampled.to_csv('supprimer_time_avec_sec_heure_etc_interpol_5min_date_fmt_api_base_Garou_moyenne.csv', index=True, index_label='pas_cumule', encoding='utf-8')
 
 print("\nFichier 'Katsune_moyenne.csv' généré avec succès.")
 
