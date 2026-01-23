@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Éditeur de Climat Multi-Paramètres</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-dragdata@2.2.4/dist/chartjs-plugin-dragdata.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .chart-container { width: 95%; max-width: 1100px; height: 500px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .toolbar { width: 95%; max-width: 1100px; display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+        .row { display: flex; gap: 15px; flex-wrap: wrap; align-items: center; justify-content: center; background: white; padding: 12px; border-radius: 8px; border: 1px solid #ddd; }
+        button { padding: 8px 15px; border: none; border-radius: 4px; background: #3498db; color: white; cursor: pointer; font-weight: bold; }
+        button:hover { background: #2980b9; }
+        input, select { padding: 6px; border-radius: 4px; border: 1px solid #ccc; }
+        #scrollBar { flex-grow: 1; cursor: pointer; }
+        .legend-info { font-size: 0.85em; color: #666; margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+
+<h2>Générateur de Climats - Multi-Paramètres</h2>
+<p class="legend-info">Astuce : Cliquez sur un nom dans la légende en haut pour masquer/afficher une courbe.</p>
+
+<div class="chart-container">
+    <canvas id="myChart"></canvas>
+</div>
+
+<div class="toolbar">
+    <div class="row">
+        <b>1940</b>
+        <input type="range" id="scrollBar" min="0" max="1000" value="1000">
+        <b>2026</b>
+        <button onclick="resetZoom()" style="background:#95a5a6">Reset Vue</button>
+    </div>
+
+    <div class="row">
+        <label style="color:#e74c3c"><b>Édition active :</b></label>
+        <select id="paramSelect" onchange="soulignerParametreActif()">
+            <option value="temperature">🌡️ Température (°C)</option>
+            <option value="humidite">💧 Humidité (%)</option>
+            <option value="luminosite">☀️ Luminosité (Lux)</option>
+        </select>
+
+        <label style="margin-left:15px"><b>Mode :</b></label>
+        <select id="modeSelect" onchange="basculerMode()">
+            <option value="classique">Classique (Points)</option>
+            <option value="avance">Avancé (Formule)</option>
+        </select>
+
+        <label><input type="checkbox" id="limitOnePerDay"> 1 pt/jour</label>
+    </div>
+
+    <div id="zoneAvance" class="row" style="display:none; background:#e8f8f5">
+        <label>f(t) = </label>
+        <input type="text" id="formuleMath" placeholder="ex: 20 + 5 * Math.sin(t/10)" style="width:250px">
+        <button onclick="genererDepuisFormule()" style="background:#27ae60">Générer</button>
+    </div>
+
+    <div class="row">
+        <label>Répéter toutes les :</label>
+        <input type="number" id="intervalHours" value="24" style="width:55px">
+        <span>h,</span>
+        <label>pendant :</label>
+        <input type="number" id="repeatCount" value="7" style="width:50px">
+        <span>fois</span>
+        <button onclick="appliquerRepetition()" style="background:#8e44ad">Lancer la répétition</button>
+        <button onclick="exporterDonnees()" style="background:#2ecc71; margin-left:20px">Exporter JSON</button>
+    </div>
+</div>
+<div>
+    
+</div>
+
+<script src="ScriptGraph.js"></script>
+</body>
+</html>
