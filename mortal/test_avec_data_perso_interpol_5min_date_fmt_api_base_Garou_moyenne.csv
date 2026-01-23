@@ -1,0 +1,2 @@
+time,temperature_2m,precipitation,relative_humidity_2m,dew_point_2m,pressure_msl,surface_pressure,et0_fao_evapotranspiration,wind_speed_10m,wind_direction_10m,direct_radiation,direct_radiation_instant
+2024-01-01,22.0,0.6666666666666666,50.0,5.0,1013.0,1010.0,0.1,10.0,200.0,66.66666666666667,66.66666666666667
