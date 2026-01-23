@@ -98,15 +98,18 @@ df_moyenne = df.drop(columns=['annee']).groupby('jour_mois').mean(numeric_only=T
 
 # Ici, on transforme l'index '01-01' en '2024-01-01T00:00'
 # On utilise 2024 (année bissextile) pour être sûr que le 29 février passe
-df_moyenne.index = pd.to_datetime("2024-" + df_moyenne.index).strftime('%Y-%m-%dT%H:%M')
+df_moyenne.index = pd.to_datetime("2024-" + df_moyenne.index)
 
 # --- 5. VÉRIFICATION ---
 valeur_finale = df_moyenne.loc['2024-01-01T00:00', 'temperature_2m']
 print(f"\nVALEUR FINALE pour le 01-01 (format 2024) : {valeur_finale}")
 
-# --- 6. EXPORT EN CSV ---
+# 6. Création des lignes vides toutes les 5 minutes
+df_resampled = df_moyenne.resample('5min').asfreq()
+
+# --- 7. EXPORT EN CSV ---
 # On garde index=True pour avoir la nouvelle colonne de temps
-df_moyenne.to_csv('Garou_moyenne.csv', index=True, index_label='time', encoding='utf-8')
+df_resampled.to_csv('trou_5min_date_fmt_api_base_Garou_moyenne.csv', index=True, index_label='time', encoding='utf-8')
 
 print("\nFichier 'Katsune_moyenne.csv' généré avec succès.")
 
