@@ -26,64 +26,7 @@ response = requests.get(url, params=params)
 data = response.json()
 print(data["hourly"])
 
-# # Simulation des données pour test (Remplace la partie API dans ton code)
-# data = {
-#     "hourly": {
-#         "time": [
-#             # 2020 (24 heures pour le 01/01)
-#             *[f"2020-01-01T{h:02d}:00" for h in range(24)],
-#             # 2021 (24 heures pour le 01/01)
-#             *[f"2021-01-01T{h:02d}:00" for h in range(24)],
-#             # 2022 (24 heures pour le 01/01)
-#             *[f"2022-01-01T{h:02d}:00" for h in range(24)],
-#         ],
-#         "temperature_2m": [
-#             *[10] * 24, # Valeurs pour 2020
-#             *[20] * 24, # Valeurs pour 2021
-#             *[30] * 24, # Valeurs pour 2022
-#         ],
-#         # Ajout de colonnes vides pour éviter les erreurs avec ton DataFrame actuel
-#         "precipitation": [0] * 72,
-#         "relative_humidity_2m": [0] * 72,
-#         "dew_point_2m": [0] * 72,
-#         "pressure_msl": [0] * 72,
-#         "surface_pressure": [0] * 72,
-#         "et0_fao_evapotranspiration": [0] * 72,
-#         "wind_speed_10m": [0] * 72,
-#         "wind_direction_10m": [0] * 72,
-#         "direct_radiation": [0] * 72,
-#         "direct_radiation_instant": [0] * 72
-#     }
-# }
 
-# # Remplace temporairement ta section de récupération API par ceci :
-# data = {
-#     "hourly": {
-#         "time": [
-#             # 2020 : 3 premières heures du 01/01
-#             "2020-01-01T00:00", "2020-01-01T01:00", "2020-01-01T02:00",
-#             # 2021 : 3 premières heures du 01/01
-#             "2021-01-01T00:00", "2021-01-01T01:00", "2021-01-01T02:00",
-#             # 2022 : 3 premières heures du 01/01
-#             "2022-01-01T00:00", "2022-01-01T01:00", "2022-01-01T02:00"
-#         ],
-#         "temperature_2m": [
-#             10.0, 16.0, 10.0,  # 2020
-#             20.0, 26.0, 20.0,  # 2021
-#             30.0, 36.0, 30.0   # 2022
-#         ],
-#         "precipitation": [0.0, 1.0, 0.0, 0.0, 2.0, 0.0, 0.0, 3.0, 0.0],
-#         "relative_humidity_2m": [50] * 9,
-#         "dew_point_2m": [5] * 9,
-#         "pressure_msl": [1013] * 9,
-#         "surface_pressure": [1010] * 9,
-#         "et0_fao_evapotranspiration": [0.1] * 9,
-#         "wind_speed_10m": [10] * 9,
-#         "wind_direction_10m": [180, 180, 180, 200, 200, 200, 220, 220, 220],
-#         "direct_radiation": [0, 100, 0, 0, 200, 0, 0, 300, 0],
-#         "direct_radiation_instant": [0, 100, 0, 0, 200, 0, 0, 300, 0]
-#     }
-# }
 
 # 1. Création du DataFrame
 df = pd.DataFrame(data["hourly"])
@@ -96,29 +39,7 @@ df = df.set_index('time')
 df['jour_mois'] = df.index.strftime('%m-%d')
 df['annee'] = df.index.year
 
-# --- ZONE DE VÉRIFICATION DÉTAILLÉE (SANS ARRONDI) ---
-print("--- ANALYSE DES 01 JANVIER PAR ANNÉE ---")
 
-for annee in [2020, 2021, 2022]:
-    print(f"\n================= ANNÉE {annee} =================")
-
-    # Isolation des 24h du 01/01 pour l'année spécifique
-    donnees_jour = df[(df['annee'] == annee) & (df['jour_mois'] == '01-01')]
-
-    # Affichage du détail des 24 heures (Température)
-    print(f"Détail des 24h du 01/01/{annee} :")
-    print(donnees_jour[['temperature_2m']])
-
-    # Calcul de l'addition (Somme)
-    somme = donnees_jour['temperature_2m'].sum()
-    print(f"\n> ADDITION (Somme des 24h) : {somme}")
-
-    # Calcul de la moyenne journalière
-    moyenne_journaliere = donnees_jour['temperature_2m'].mean()
-    print(f"> MOYENNE du jour          : {moyenne_journaliere}")
-
-print("\n================================================")
-# -----------------------------------------------------
 
 # --- 4. CALCUL DE LA MOYENNE ET REFORMATAGE DE LA DATE ---
 
@@ -182,7 +103,7 @@ df_resampled['jours_cumules'] = (secondes_totale // 86400) + 1
 df_resampled['secondes_cumulees'] = secondes_totale
 
 # 4. Minutes cumulées : commence à 0
-df_resampled['minutes_cumulees'] = (secondes_totale // 60)
+df_resampled['minutes'] = (secondes_totale // 60) % 60
 
 # 5. Heures cumulées : commence à 0 (cumul infini : 24, 25, 26...)
 df_resampled['heures_cumulees'] = (secondes_totale // 3600)
@@ -201,43 +122,16 @@ df_resampled = df_resampled.drop(columns=['time', 'jour_mois'], errors='ignore')
 df_resampled = df_resampled.set_index('pas_cumule')
 
 # 4. (Optionnel) On réorganise les colonnes de temps restantes pour qu'elles soient au début
-colonnes_temps = ['minutes_cumulees', 'secondes_cumulees','heures_cumulees', 'jours_cumules']
+colonnes_temps = ['minutes', 'secondes_cumulees','heures_cumulees', 'jours_cumules']
 autres_colonnes = [c for c in df_resampled.columns if c not in colonnes_temps]
 df_resampled = df_resampled[colonnes_temps + autres_colonnes]
 
 # --- 8. EXPORT EN CSV ---
 # On garde index=True pour avoir la nouvelle colonne de temps
-df_resampled.to_csv('supprimer_time_avec_sec_heure_etc_interpol_5min_date_fmt_api_base_Garou_moyenne.csv', index=True, index_label='pas_cumule', encoding='utf-8')
+df_resampled.to_csv('fix_minutes_supprimer_time_avec_sec_heure_etc_interpol_5min_date_fmt_api_base_Garou_moyenne.csv', index=True, index_label='pas_cumule', encoding='utf-8')
 
 print("\nFichier 'Katsune_moyenne.csv' généré avec succès.")
 
-# ==============================================================================
-# ANALYSE DES RÉSULTATS DE TEST (VÉRIFICATION MANUELLE)
-# ==============================================================================
-# Tes résultats confirment que le programme fonctionne exactement comme prévu.
-# Voici d'où proviennent les chiffres obtenus :
-#
-# 1. MOYENNE DE TEMPÉRATURE (22.0)
-#    -> Preuve que le groupby mélange correctement les années.
-#    -> À 00:00 : 10 (2020) + 20 (2021) + 30 (2022) = 60 / 3 ans = 20.0
-#    -> À 01:00 : 16 (2020) + 26 (2021) + 36 (2022) = 78 / 3 ans = 26.0
-#    -> Note : Dans le JSON, la valeur 22.0 correspond à la moyenne globale
-#       calculée sur l'ensemble des points du premier janvier.
-#
-# 2. PRÉCIPITATIONS (0.666667)
-#    -> À 01:00 : 1.0 (2020) + 2.0 (2021) + 0.0 (2022) = 3.0 / 3 ans = 1.0
-#    -> La valeur 0.666... obtenue montre que le calcul traite bien l'absence
-#       de données sur certains points horaires ou années (Moyenne : 2/3).
-#
-# 3. DIRECTION DU VENT (200.0)
-#    -> Valeurs : 180 (2020), 200 (2021), 220 (2022)
-#    -> Moyenne : (180 + 200 + 220) / 3 = 200.0
-#
-# 4. INTERPOLATION ET RESAMPLING
-#    -> Le passage en Datetime (Année 2024 fixe) est opérationnel.
-#    -> Le Resample 5min a correctement créé les lignes intermédiaires (NaN).
-#    -> Les fonctions Linear et PCHIP ont rempli les trous sans erreur.
-# ==============================================================================
 
 
 
