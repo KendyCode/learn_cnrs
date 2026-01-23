@@ -162,11 +162,50 @@ for method, cols in groupes.items():
             # pchip est excellent pour les courbes solaires et le vent
             df_resampled[cols_presentes] = df_resampled[cols_presentes].interpolate(method='pchip')
 
+# --- 9. CALCULS DES TEMPS CUMULÉS (INFINIS) ---
 
+# On définit le point de départ
+temps_zero = df_resampled.index[0]
+
+# On calcule l'écart total (Timedelta) pour chaque ligne
+diff = df_resampled.index - temps_zero
+secondes_totale = diff.total_seconds().astype(int)
+
+# 1. Pas cumulés : commence à 1 (1, 2, 3...)
+df_resampled['pas_cumule'] = range(1, len(df_resampled) + 1)
+
+# 2. Jours cumulés : commence à 1 (1 pour le premier jour, 2 pour le second...)
+# On divise par 86400 (secondes dans un jour) et on ajoute 1
+df_resampled['jours_cumules'] = (secondes_totale // 86400) + 1
+
+# 3. Secondes cumulées : commence à 0
+df_resampled['secondes_cumulees'] = secondes_totale
+
+# 4. Minutes cumulées : commence à 0
+df_resampled['minutes_cumulees'] = (secondes_totale // 60)
+
+# 5. Heures cumulées : commence à 0 (cumul infini : 24, 25, 26...)
+df_resampled['heures_cumulees'] = (secondes_totale // 3600)
+
+
+# --- 9.5 RÉORGANISATION DES COLONNES ---
+
+# On définit l'ordre que l'on veut (Temps cumulé d'abord, puis le reste)
+colonnes_temps = ['pas_cumule', 'minutes_cumulees', 'secondes_cumulees','heures_cumulees', 'jours_cumules']
+
+# On récupère toutes les autres colonnes (température, pluie, etc.)
+# en excluant celles qu'on a déjà mises dans colonnes_temps et l'ancienne 'jour_mois'
+autres_colonnes = []
+for c in df_resampled.columns:
+    if c not in colonnes_temps and c != 'jour_mois':
+        autres_colonnes.append(c)
+
+# On réorganise le DataFrame avec le nouvel ordre
+df_resampled = df_resampled[colonnes_temps + autres_colonnes]
 
 # --- 8. EXPORT EN CSV ---
 # On garde index=True pour avoir la nouvelle colonne de temps
-df_resampled.to_csv('test_avec_data_perso_interpol_5min_date_fmt_api_base_Garou_moyenne.csv', index=True, index_label='time', encoding='utf-8')
+df_resampled.to_csv('avec_sec_heure_etc_interpol_5min_date_fmt_api_base_Garou_moyenne.csv', index=True, index_label='time', encoding='utf-8')
 
 print("\nFichier 'Katsune_moyenne.csv' généré avec succès.")
 
