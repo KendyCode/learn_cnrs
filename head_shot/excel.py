@@ -9,7 +9,7 @@ start_time = time.time()
 
 # --- CONFIGURATION ---
 n = 200000  # Nombre de lignes (à passer à 50000 plus tard)
-template_name = 'full_blanc_de_val_train_Template-Consignes-V3.0.xlsx' # Ton fichier modèle avec les couleurs
+csv_name = 'data_brutes.csv'
 
 colonnes_automate = ["NUMERO_E", "HEURE_E", "MINUTE_E","SECONDE_E"]
 colonnes_programmation = ['No_Pas', 'mn', 'secondes', 'no h', 'no jours', 'TEMP_CEL', 'REGUL_ECORIUM', 'T_ECOR_FOND', 'T_ECOR_INF', 'T_ECOR_SUP', 'REGUL_HYG', 'HYG_CEL', 'REGUL_PRESSION', 'PRESSION', 'REGUL_C', 'C', 'REGUL_O', 'O', 'REGUL_N', 'N', 'REGUL_X', 'X', 'HAUT_ECOLUX', 'INT_ECOLUX', 'CONFIG_ECOLUX', 'INT_PLUIE', 'VITESSE_VENT', 'VENT_LATERAL_UN', 'VENT_LATERAL_DEUX', 'VENT_LATERAL_TROIS', 'VENT_LATERAL_QUATRE', 'INT_VENT_LAT', 'RENO_AIR', 'EVENT Chromato', 'Vide_1', 'CONFIG_MES_INCUB', 'ACTION_1', 'ACTION_2', 'ACTION_3', 'ACTION_4', 'ACTION_5', 'ACTION_6', 'ACTION_7', 'ACTION_8', 'ACTION_9', 'ACTION_10', 'ACTION_11', 'ACTION_12', 'ACTION_13', 'ACTION_14', 'ACTION_15', 'TEMP_PLUIE', 'CHROMATO', 'EV_VIDANGE_ECORIUM', 'VIDANGE_CANIVEAU', 'EV_VIDANGE_CLIM', 'Vide_2', 'MAX T', 'MIN T', 'MAX HR', 'MIN HR', 'tests valeurs Temp', 'tests valeurs Hum', 'MARCHE', 'HYG_Corrigée pour Temp < 0', 'Min Temp', 'Max Temp', 'Temp Mode Mesure']
@@ -53,41 +53,23 @@ cols_parametres = ['TEMP_CEL', 'REGUL_ECORIUM', 'REGUL_HYG', 'HYG_CEL', 'REGUL_P
 ma_liste_complete = [22.0, 0, 1, 60, 0, 0, 1, 450, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0.0]
 df_programmation[cols_parametres] = ma_liste_complete
 
+# --- 6. EXPORT CSV (Vitesse maximum) ---
+# sep=';' pour Excel/LibreOffice FR
+# encoding='utf-8-sig' pour les accents et la reconnaissance auto
+df_programmation.to_csv(csv_name, sep=';', index=False, encoding='utf-8-sig')
+
+# --- FIN DU CHRONOMÈTRE ---
+execution_time = time.time() - start_time
+
+print(f"Done : Le fichier {csv_name} a été créé.")
+print(f"Temps d'exécution total : {execution_time:.4f} secondes")
+
 
 # ma_liste = [22.0, 0, 22.0, 22.0, 22.0, 1, 60, 0, 0, 1, 450, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0.0]
 # df_programmation.iloc[0:10, 5:57] = ma_liste
 
 
 
-try:
-    # On ouvre le writer DIRECTEMENT avec le paramètre 'book' dans les arguments
-    with pd.ExcelWriter(
-            template_name,
-            engine='openpyxl',
-            mode='a',
-            if_sheet_exists='overlay'
-    ) as writer:
 
-        # Pour les versions récentes, on accède au book via writer.book si nécessaire,
-        # mais to_excel utilise automatiquement le fichier ouvert par ExcelWriter.
-
-        # On écrit à partir de la ligne 2 (startrow=1)
-        df_programmation.to_excel(
-            writer,
-            sheet_name='Programmation',
-            index=False,
-            header=False,
-            startrow=1
-        )
-
-        # --- FIN DU CHRONOMÈTRE ---
-    end_time = time.time()
-    execution_time = end_time - start_time
-
-    print(f"Done : Les données ont été injectées dans {template_name}")
-    print(f"Temps d'exécution total : {execution_time:.4f} secondes")
-
-except FileNotFoundError:
-    print(f"Erreur : Le fichier {template_name} n'a pas été trouvé.")
 
 
