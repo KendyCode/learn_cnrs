@@ -4,12 +4,11 @@ import requests
 import requests_cache
 from retry_requests import retry
 
-# Setup the Open-Meteo API client with cache and retry on error
+# --- 1. CONFIGURATION API ET RÉCUPÉRATION ---
 cache_session = requests_cache.CachedSession('.cache', expire_after = -1)
 retry_session = retry(cache_session, retries = 5, backoff_factor = 0.2)
 openmeteo = openmeteo_requests.Client(session = retry_session)
 
-# URL et paramètres
 url = "https://archive-api.open-meteo.com/v1/archive"
 params = {
     "latitude": 52.52,
@@ -19,96 +18,73 @@ params = {
     "hourly": "temperature_2m,relative_humidity_2m,dew_point_2m,precipitation,pressure_msl,surface_pressure,et0_fao_evapotranspiration,wind_speed_10m,wind_direction_10m,direct_radiation,direct_radiation_instant",
 }
 
-#bon_Garou_moyenne
-
-# Récupération des données
 response = requests.get(url, params=params)
 data = response.json()
-print(data["hourly"])
 
-# # Simulation des données pour test (Remplace la partie API dans ton code)
-# data = {
-#     "hourly": {
-#         "time": [
-#             # 2020 (24 heures pour le 01/01)
-#             *[f"2020-01-01T{h:02d}:00" for h in range(24)],
-#             # 2021 (24 heures pour le 01/01)
-#             *[f"2021-01-01T{h:02d}:00" for h in range(24)],
-#             # 2022 (24 heures pour le 01/01)
-#             *[f"2022-01-01T{h:02d}:00" for h in range(24)],
-#         ],
-#         "temperature_2m": [
-#             *[10] * 24, # Valeurs pour 2020
-#             *[20] * 24, # Valeurs pour 2021
-#             *[30] * 24, # Valeurs pour 2022
-#         ],
-#         # Ajout de colonnes vides pour éviter les erreurs avec ton DataFrame actuel
-#         "precipitation": [0] * 72,
-#         "relative_humidity_2m": [0] * 72,
-#         "dew_point_2m": [0] * 72,
-#         "pressure_msl": [0] * 72,
-#         "surface_pressure": [0] * 72,
-#         "et0_fao_evapotranspiration": [0] * 72,
-#         "wind_speed_10m": [0] * 72,
-#         "wind_direction_10m": [0] * 72,
-#         "direct_radiation": [0] * 72,
-#         "direct_radiation_instant": [0] * 72
-#     }
-# }
-
-# 1. Création du DataFrame
+# Création du DataFrame initial
 df = pd.DataFrame(data["hourly"])
-
-# 2. Conversion du temps et indexation
 df['time'] = pd.to_datetime(df['time'])
 df = df.set_index('time')
 
-# 3. Création des colonnes de regroupement
-df['jour_mois'] = df.index.strftime('%m-%d')
-df['annee'] = df.index.year
+# --- 2. TRAITEMENT DES MOYENNES (Groupement par jour/mois) ---
+df['jour_mois'] = df.index.strftime('%m-%d %H:%M') # On garde l'heure pour le groupement
+df_moyenne = df.groupby('jour_mois').mean(numeric_only=True)
 
-# --- ZONE DE VÉRIFICATION DÉTAILLÉE (SANS ARRONDI) ---
-print("--- ANALYSE DES 01 JANVIER PAR ANNÉE ---")
+# Reconstruction d'un index temporel sur une année fictive (2024 bissextile)
+df_moyenne.index = pd.to_datetime("2024-" + df_moyenne.index)
+df_moyenne = df_moyenne.sort_index()
 
-for annee in [2020, 2021, 2022]:
-    print(f"\n================= ANNÉE {annee} =================")
+# --- 3. INTERPOLATION 5 MINUTES ---
+# Création des lignes toutes les 5 minutes
+df_resampled = df_moyenne.resample('5min').asfreq()
 
-    # Isolation des 24h du 01/01 pour l'année spécifique
-    donnees_jour = df[(df['annee'] == annee) & (df['jour_mois'] == '01-01')]
+# Application des méthodes d'interpolation par groupe
+groupes = {
+    'linear': ['temperature_2m', 'relative_humidity_2m', 'pressure_msl', 'surface_pressure', 'dew_point_2m', 'et0_fao_evapotranspiration'],
+    'ffill': ['wind_direction_10m', 'precipitation'],
+    'pchip': ['direct_radiation', 'direct_radiation_instant', 'wind_speed_10m']
+}
 
-    # Affichage du détail des 24 heures (Température)
-    print(f"Détail des 24h du 01/01/{annee} :")
-    print(donnees_jour[['temperature_2m']])
+for method, cols in groupes.items():
+    cols_presentes = [c for c in cols if c in df_resampled.columns]
+    if cols_presentes:
+        if method == 'linear':
+            df_resampled[cols_presentes] = df_resampled[cols_presentes].interpolate(method='linear')
+        elif method == 'ffill':
+            df_resampled[cols_presentes] = df_resampled[cols_presentes].ffill()
+        elif method == 'pchip':
+            df_resampled[cols_presentes] = df_resampled[cols_presentes].interpolate(method='pchip')
 
-    # Calcul de l'addition (Somme)
-    somme = donnees_jour['temperature_2m'].sum()
-    print(f"\n> ADDITION (Somme des 24h) : {somme}")
+# Nettoyage final des NaNs restants (début/fin de fichier)
+# df_resampled = df_resampled.ffill().bfill()
 
-    # Calcul de la moyenne journalière
-    moyenne_journaliere = donnees_jour['temperature_2m'].mean()
-    print(f"> MOYENNE du jour          : {moyenne_journaliere}")
+# --- 4. CALCULS DES TEMPS (CUMULÉS ET CYCLIQUES) ---
+temps_zero = df_resampled.index[0]
+diff = df_resampled.index - temps_zero
+sec_totale = diff.total_seconds().astype(int)
 
-print("\n================================================")
-# -----------------------------------------------------
+# Création des colonnes demandées
+df_resampled['pas_cumule'] = range(1, len(df_resampled) + 1)
+df_resampled['jours_cumules'] = (sec_totale // 86400) + 1
+df_resampled['secondes_cumulees'] = sec_totale
+df_resampled['heures_cumulees'] = (sec_totale // 3600)
+df_resampled['minutes'] = (sec_totale // 60) % 60  # Remise à 0 toutes les heures
 
-# --- 4. CALCUL DE LA MOYENNE ET REFORMATAGE DE LA DATE ---
+# --- 5. RÉORGANISATION FINALE (Suppression de 'time') ---
+# On sort 'time' de l'index pour pouvoir le supprimer
+df_resampled = df_resampled.reset_index()
+df_resampled = df_resampled.drop(columns=['time', 'jour_mois'], errors='ignore')
 
-# On calcule la moyenne en ignorant les colonnes non-numériques (comme jour_mois)
-df_moyenne = df.drop(columns=['annee']).groupby('jour_mois').mean(numeric_only=True)
+# Définition du pas_cumule comme index final
+df_resampled = df_resampled.set_index('pas_cumule')
 
-# Ici, on transforme l'index '01-01' en '2024-01-01T00:00'
-# On utilise 2024 (année bissextile) pour être sûr que le 29 février passe
-df_moyenne.index = pd.to_datetime("2024-" + df_moyenne.index).strftime('%Y-%m-%dT%H:%M')
+# Ordre des colonnes de temps au début
+colonnes_temps = ['minutes', 'secondes_cumulees', 'heures_cumulees', 'jours_cumules']
+autres_cols = [c for c in df_resampled.columns if c not in colonnes_temps]
+df_resampled = df_resampled[colonnes_temps + autres_cols]
 
-# --- 5. VÉRIFICATION ---
-valeur_finale = df_moyenne.loc['2024-01-01T00:00', 'temperature_2m']
-print(f"\nVALEUR FINALE pour le 01-01 (format 2024) : {valeur_finale}")
+# --- 6. EXPORT CSV ---
+nom_sortie = 'rrr_meteo_final.csv'
+df_resampled.to_csv(nom_sortie, index=True, index_label='pas_cumule', encoding='utf-8')
 
-# --- 6. EXPORT EN CSV ---
-# On garde index=True pour avoir la nouvelle colonne de temps
-df_moyenne.to_csv('Garou_moyenne.csv', index=True, index_label='time', encoding='utf-8')
-
-print("\nFichier 'Katsune_moyenne.csv' généré avec succès.")
-
-
-
+print(f"\nTraitement terminé. Fichier '{nom_sortie}' généré avec succès.")
