@@ -17,6 +17,7 @@ params = {
     "start_date": "2020-01-01",
     "end_date": "2022-12-31",
     "hourly": "temperature_2m,relative_humidity_2m,dew_point_2m,precipitation,pressure_msl,surface_pressure,et0_fao_evapotranspiration,wind_speed_10m,wind_direction_10m,direct_radiation,direct_radiation_instant",
+    "timezone" : "auto"
 }
 
 #bon_Garou_moyenne
@@ -128,7 +129,7 @@ df_resampled = df_resampled[colonnes_temps + autres_colonnes]
 
 # --- 8. EXPORT EN CSV ---
 # On garde index=True pour avoir la nouvelle colonne de temps
-df_resampled.to_csv('fix_minutes_supprimer_time_avec_sec_heure_etc_interpol_5min_date_fmt_api_base_Garou_moyenne.csv', index=True, index_label='pas_cumule', encoding='utf-8')
+df_resampled.to_csv('TIME_ZONE_AUTO_fix_minutes_supprimer_time_avec_sec_heure_etc_interpol_5min_date_fmt_api_base_Garou_moyenne.csv', index=True, index_label='pas_cumule', encoding='utf-8')
 
 print("\nFichier 'Katsune_moyenne.csv' généré avec succès.")
 
