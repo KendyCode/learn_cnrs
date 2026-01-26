@@ -17,6 +17,7 @@ params = {
     "start_date": "2020-01-01",
     "end_date": "2022-12-31",
     "hourly": "temperature_2m,relative_humidity_2m,dew_point_2m,precipitation,pressure_msl,surface_pressure,et0_fao_evapotranspiration,wind_speed_10m,wind_direction_10m,direct_radiation,direct_radiation_instant",
+    "timezone" : "auto"
 }
 
 # Récupération des données
@@ -98,7 +99,7 @@ valeur_finale = df_moyenne.loc['01-01', 'temperature_2m']
 print(f"\nVALEUR FINALE DANS LE CSV (Moyenne des 3 ans) pour le 01-01 : {valeur_finale}")
 
 # 6. Export en CSV
-df_moyenne.to_csv('Katsune_moyenne.csv', index=True, encoding='utf-8')
+df_moyenne.to_csv('IIIKatsune_moyenne.csv', index=True, encoding='utf-8')
 
 print("\nFichier '1_moyenne.csv' généré avec succès.")
 
