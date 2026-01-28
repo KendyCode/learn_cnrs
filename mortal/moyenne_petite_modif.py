@@ -63,43 +63,21 @@ df['time'] = pd.to_datetime(df['time'])
 df = df.set_index('time')
 
 # 3. Création des colonnes de regroupement
-df['jour_mois'] = df.index.strftime('%m-%d')
-df['annee'] = df.index.year
+df_temp = df.copy()
+df_temp['jour_mois'] = df.index.strftime('%m-%d')
 
-# --- ZONE DE VÉRIFICATION DÉTAILLÉE (SANS ARRONDI) ---
-print("--- ANALYSE DES 01 JANVIER PAR ANNÉE ---")
 
-for annee in [2020, 2021, 2022]:
-    print(f"\n================= ANNÉE {annee} =================")
-
-    # Isolation des 24h du 01/01 pour l'année spécifique
-    donnees_jour = df[(df['annee'] == annee) & (df['jour_mois'] == '01-01')]
-
-    # Affichage du détail des 24 heures (Température)
-    print(f"Détail des 24h du 01/01/{annee} :")
-    print(donnees_jour[['temperature_2m']])
-
-    # Calcul de l'addition (Somme)
-    somme = donnees_jour['temperature_2m'].sum()
-    print(f"\n> ADDITION (Somme des 24h) : {somme}")
-
-    # Calcul de la moyenne journalière
-    moyenne_journaliere = donnees_jour['temperature_2m'].mean()
-    print(f"> MOYENNE du jour          : {moyenne_journaliere}")
-
-print("\n================================================")
-# -----------------------------------------------------
 
 # 4. Calcul de la moyenne finale par jour de l'année (Mixe 2020, 2021, 2022)
 # On retire la colonne 'annee' pour ne pas calculer sa moyenne
-df_moyenne = df.drop(columns=['annee']).groupby('jour_mois').mean()
+df_moyenne = df_temp.groupby('jour_mois').mean(numeric_only=True)
 
 # 5. Vérification de la valeur finale pour le 01-01 dans le DataFrame de sortie
 valeur_finale = df_moyenne.loc['01-01', 'temperature_2m']
 print(f"\nVALEUR FINALE DANS LE CSV (Moyenne des 3 ans) pour le 01-01 : {valeur_finale}")
 
 # 6. Export en CSV
-df_moyenne.to_csv('27_IIIKatsune_moyenne.csv', index=True, encoding='utf-8')
+df_moyenne.to_csv('ARK27_IIIKatsune_moyenne.csv', index=True, encoding='utf-8')
 
 print("\nFichier '1_moyenne.csv' généré avec succès.")
 
