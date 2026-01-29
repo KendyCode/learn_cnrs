@@ -10,7 +10,7 @@ params = {
     "latitude": 52.52,
     "longitude": 13.41,
     "start_date": "2020-01-01",
-    "end_date": "2022-01-01",
+    "end_date": "2020-01-01",
     "hourly": "temperature_2m,relative_humidity_2m,dew_point_2m,precipitation,pressure_msl,surface_pressure,et0_fao_evapotranspiration,wind_speed_10m,wind_direction_10m,direct_radiation,direct_radiation_instant",
     "timezone" : "auto"
 }
@@ -77,8 +77,8 @@ df_programmation[cols_parametres] = ma_liste_complete
 
 # 3. ON ÉCRASE UNIQUEMENT TEMP_CEL AVEC LES DONNÉES DE L'API
 # Comme n = len(data["hourly"]["temperature_2m"]), les tailles correspondent parfaitement
-df_programmation['TEMP_CEL'] = data["hourly"]["temperature_2m"]
-df_programmation['HYG_CEL'] = data["hourly"]["relative_humidity_2m"]
+# df_programmation['TEMP_CEL'] = data["hourly"]["temperature_2m"]
+# df_programmation['HYG_CEL'] = data["hourly"]["relative_humidity_2m"]
 
 #tests valeurs Temp
 # On crée l'index décalé (2 + 31 = 33)
@@ -95,7 +95,42 @@ df_programmation['tests valeurs Temp'] = (
 
 
 #tests valeurs Hum
-df_programmation['tests valeurs Hum'] = np.char.add("=IF(OR(L", idx_excel) + ",100,L" + idx_excel + "<7,BL" + idx_excel + "=0),\"ERR\",\"OK\")"
+df_programmation['tests valeurs Hum'] = np.char.add("=IF(OR(L", idx_excel) + ">100,L" + idx_excel + "<7,BL" + idx_excel + "=0),\"ERR\",\"OK\")"
+df_programmation['MARCHE'] = "=IF(SUM(F" + idx_excel + ":BD" + idx_excel + ")=0,0,1)"
+df_programmation['HYG_Corrigée pour Temp < 0'] = (
+        "=IF(AND(BP" + idx_excel + "<0,L" + idx_excel + "<=80),80,L" + idx_excel + ")"
+)
+
+# On définit l'index de fin (i + 11)
+idx_fin = (np.arange(2, n + 2) + 11).astype(str)
+
+# Formule MIN
+df_programmation['Min Temp'] = (
+        "=MIN(F" + idx_excel + ":F" + idx_fin +
+        ",H" + idx_excel + ":H" + idx_fin +
+        ",I" + idx_excel + ":I" + idx_fin +
+        ",J" + idx_excel + ":J" + idx_fin +
+        ",AZ" + idx_excel + ":AZ" + idx_fin + ")"
+)
+
+# Formule MAX
+df_programmation['Max Temp'] = (
+        "=MAX(F" + idx_excel + ":F" + idx_fin +
+        ",H" + idx_excel + ":H" + idx_fin +
+        ",I" + idx_excel + ":I" + idx_fin +
+        ",J" + idx_excel + ":J" + idx_fin +
+        ",AZ" + idx_excel + ":AZ" + idx_fin + ")"
+)
+
+# idx_prec (idx - 1) pour BP, idx_decale (idx + 31) pour F33
+idx_prec = (np.arange(2, n + 2) - 1).astype(str)
+idx_decale = (np.arange(2, n + 2) + 31).astype(str)
+
+df_programmation['Temp Mode Mesure'] = (
+        "=IF(AJ" + idx_excel + ",BP" + idx_prec + ",F" + idx_decale + ")"
+)
+
+
 
 ###### Automate ######
 
@@ -115,192 +150,170 @@ df_automate['TEMP_CEL'] = np.char.add("=Programmation!F", idx_excel) + "*10"
 
 df_automate['REGUL_ECORIUM'] = np.char.add("=Programmation!G", idx_excel)
 
+df_automate['T_ECOR_FOND'] = (
+        "=IF(Programmation!H" + idx_excel +
+        "<Config!$B$9,Config!$B$9,Programmation!H" + idx_excel + ")"
+)
 
+# Pour la Ceinture Basse (Ligne 10 dans Config)
+df_automate['T_ECOR_INF'] = "=IF(Programmation!I" + idx_excel + "<Config!$B$10,Config!$B$10,Programmation!I" + idx_excel + ")"
 
+# Pour la Ceinture Haute (Ligne 11 dans Config)
+df_automate['T_ECOR_SUP'] = "=IF(Programmation!J" + idx_excel + "<Config!$B$11,Config!$B$11,Programmation!J" + idx_excel + ")"
 
+df_automate['REGUL_HYG'] = "=Programmation!K" + idx_excel
 
+df_automate['HYG_CEL'] = "=IF(Programmation!L" + idx_excel + ">95,95,Programmation!L" + idx_excel + ")"
 
-### Config #######
+df_automate['REGUL_PRESSION'] = "Programmation!M" + idx_excel
+df_automate['PRESSION'] = "Programmation!N" + idx_excel
+df_automate['REGUL_CO'] = "Programmation!O" + idx_excel
+df_automate['CO'] = "Programmation!O" + idx_excel
+df_automate['REGUL_O'] = "Programmation!O" + idx_excel
+df_automate['O'] = "Programmation!O" + idx_excel
 
+# Tu peux ajouter autant de colonnes que tu veux ici
+correspondances_titres = {
+    'TEMP_CEL': '=Programmation!F1',
+    'REGUL_ECORIUM': '=Programmation!G1',
+    'T_ECOR_FOND': '=Programmation!H1',
+    'T_ECOR_INF': '=Programmation!I1',
+    'T_ECOR_SUP': '=Programmation!J1',
+    'REGUL_HYG': '=Programmation!K1',
+    'HYG_CEL': '=Programmation!L1'
+} # On change juste le nom pour la sortie
 
+# À placer juste avant le bloc "with pd.ExcelWriter"
+titres_pour_excel = [correspondances_titres.get(col, col) for col in df_automate.columns]
 
 # Utilisation de ExcelWriter
-with pd.ExcelWriter('Diez_Road_to_Ecolab.xlsx', engine='openpyxl') as writer:
-    df_automate.to_excel(writer, sheet_name='Automate', index=False)
+with pd.ExcelWriter('Diez_Road_to_Ecolab.xlsx', engine='xlsxwriter') as writer:
+    df_automate.to_excel(writer, sheet_name='Automate', index=False, header=titres_pour_excel)
     df_programmation.to_excel(writer, sheet_name='Programmation', index=False)
     df_infos.to_excel(writer, sheet_name='Infos', index=False)
     df_config.to_excel(writer, sheet_name='Config', index=False)
 
-    # --- ACCÈS ET CONTENU ---
+    # Récupération de l'objet feuille
     ws_config = writer.sheets['Config']
 
-    # --- STYLES ET FUSION ---
-    style_jaune_flash = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
-    style_gras = Font(bold=True)
-    style_centre = Alignment(horizontal="center", vertical="center")
+    # Placer du texte ou des valeurs dans des cases précises
+    ws_config.write('A4', "Anticipation (min)")
+    ws_config.write('B4', 60)
+    ws_config.write('A5', "Fortes Chaleurs")
+    ws_config.write('B5', 0)
 
-    # --- Val simple---
-    ws_config['B4'] = 60
-    ws_config['B5'] = 0
-    ws_config["B9"] = 5
-    ws_config["B10"] = 5
-    ws_config["B11"] = 5
-    ws_config["E9"] = 5
+    # COnfig Regu Eco
+    ws_config.write('A7', "Configuration Régulation ECORIUM")
+    ws_config.write('B8', "Minimum")
+    ws_config.write('B8', "Minimum")
+    ws_config.write('A9', "Fond")
+    ws_config.write('A10', "Ceinture Basse")
+    ws_config.write('A11', "Ceinture Haute")
+    ws_config.write('B9', 5)
+    ws_config.write('B10', 5)
+    ws_config.write('B11', 5)
 
-    ws_config["B17"] = -6.5
-    ws_config["C17"] = -15
-    ws_config["D17"] = -10
-    ws_config["E17"] = -15
-    ws_config["F17"] = 5
-    ws_config["G17"] = -6
+    ws_config.write('D9', "Temp Pluie")
+    ws_config.write('E8', "Minimum")
+    ws_config.write('E9', 5)
 
-    ws_config["B18"] = 10
-    ws_config["C18"] = 20
-    ws_config["D18"] = 55
-    ws_config["E18"] = 20
-    ws_config["F18"] = 55
-    ws_config["G18"] = 10
+    #Config Thermo
+    ws_config.write('A14', "Configuration Thermofrigopompe")
+    ws_config.write('A17', "Ballon Froid")
+    ws_config.write('A18', "Ballon Chaud")
 
-    # --- Val Formule---
-    ws_config["B23"] = "=B17-G17"
-    ws_config["C23"] = "=SI(B5;E17;C17)-G17"
-    ws_config["D23"] = "=SI(B5;F17;D17)-G17"
+    ws_config.write('B16', "Delta Températures (°C)")
 
-    ws_config["B24"] = "=B18-G18"
-    ws_config["C24"] = "=SI(B5;E18;C18)-G18"
-    ws_config["D24"] = "=SI(B5;F18;D18)-G18"
+    ws_config.write('C15', "Températures Extrèmes Normales")
+    ws_config.write('C16', "Minimum")
+    ws_config.write('D16', "Maximum")
 
+    ws_config.write('E15', "Températures Extrèmes Fortes")
+    ws_config.write('E16', "Minimum")
+    ws_config.write('F16', "Maximum")
 
+    ws_config.write('G16', "Offsets Automate")
 
+    ws_config.write('B17', -6.5)
+    ws_config.write('C17', -15)
+    ws_config.write('D17', 10)
+    ws_config.write('E17',-15)
+    ws_config.write('F17',5)
+    ws_config.write('G17', -6)
 
-    # --- TITRE Gras ---
-    ws_config['A9'] = "Fond"
-    ws_config["A10"] = "Ceinture Base"
-    ws_config["A11"] = "Ceinture Haute"
-    ws_config["A17"] = "Ballon Froid"
-    ws_config["A18"] = "Ballon Chaud"
-    ws_config["A23"] = "Ballon Froid"
-    ws_config["A24"] = "Ballon Chaud"
+    ws_config.write('B18', 10)
+    ws_config.write('C18', 20)
+    ws_config.write('D18', 55)
+    ws_config.write('E18',20)
+    ws_config.write('F18',55)
+    ws_config.write('G18', 10)
 
-    # --- TITRE Centre Gras ---
-    ws_config['A4'] = "Anticipation (min)"
-    ws_config['A5'] = "Fortes Chaleurs"
-    ws_config["B8"] = "Minimum"
-    ws_config["D9"] = "Temp Pluie"
-    ws_config["E8"] = "Minimum"
-    ws_config["C16"] = "Minimum"
-    ws_config["D16"] = "Maximum"
-    ws_config["E16"] = "Minimum"
-    ws_config["F16"] = "Maximum"
-    ws_config["C22"] = "Minimum"
-    ws_config["D22"] = "Maximum"
+    # Reglage Thermo
+    ws_config.write('A23', "Ballon Froid")
+    ws_config.write('A24', "Ballon Chaud")
 
+    ws_config.write('B22', "Delta Températures (°C)")
 
-    # Fusion vide
-    ws_config.merge_cells('A15:A16')
-    ws_config.merge_cells('A21:A22')
+    ws_config.write('C21', "Températures")
+    ws_config.write('C22', "Minimum")
+    ws_config.write('D22', "Maximum")
 
-    # --- TITRE Fusion Centre Gras ---
-    ws_config.merge_cells('C21:D21')
-    cellule_temp = ws_config['C21']
-    cellule_temp.value = "Températures"
-
-    ws_config.merge_cells('B21:B22')
-    cellule_delta_temp_2 = ws_config['B21']
-    cellule_delta_temp_2.value = "Delta Températures (°C)"
-
-    ws_config.merge_cells('G15:G16')
-    celulle_offsets_automate = ws_config['G15']
-    celulle_offsets_automate.value = "Offsets Automate"
-
-    ws_config.merge_cells('B15:B16')
-    cellule_delta_temp_1 = ws_config['B15']
-    cellule_delta_temp_1.value = "Delta Températures (°C)"
-    cellule_delta_temp_1.font = style_gras
-    cellule_delta_temp_1.alignment = style_centre
-
-    ws_config.merge_cells('C15:D15')
-    cellule_temp_extremes_normales = ws_config['C15']
-    cellule_temp_extremes_normales.value = "Températures Extrèmes Normales"
-
-    ws_config.merge_cells('E15:F15')
-    cellule_temp_extremes_normales = ws_config['E15']
-    cellule_temp_extremes_normales.value = "Températures Extrèmes Fortes"
-
-    # --- TITRE FUSIONNÉ Centre Gras Fond Jaune ---
-    ws_config.merge_cells('A7:B7')
-    cellule_config_regu_eco = ws_config['A7']
-    cellule_config_regu_eco.value = "Configuration Régulation ECORIUM"
-    cellule_config_regu_eco.fill = style_jaune_flash
-    cellule_config_regu_eco.font = style_gras
-    cellule_config_regu_eco.alignment = style_centre
-
-    ws_config.merge_cells('A14:G14')
-    cellule_config_thermo = ws_config['A14']
-    cellule_config_thermo.value = "Configuration Thermofrigopompe"
-    cellule_config_thermo.fill = style_jaune_flash
-    cellule_config_thermo.font = style_gras
-    cellule_config_thermo.alignment = style_centre
-
-    ws_config.merge_cells('A20:D20')
-    cellule_reglage_thermo = ws_config['A20']
-    cellule_reglage_thermo.value = "Réglage Thermofrigopompe"
-    cellule_reglage_thermo.fill = style_jaune_flash
-    cellule_reglage_thermo.font = style_gras
-    cellule_reglage_thermo.alignment = style_centre
+    ws_config.write_formula('B23', "=B17-G17")
+    ws_config.write_formula('C23', "=IF(B5=1,E17,C17)-G17")
+    ws_config.write_formula('D23', "=IF(B5=1,F17,D17)-G17")
+    ws_config.write_formula('B24', "=B18-G18")
+    ws_config.write_formula('C24', "=IF(B5=1,E18,C18)-G18")
+    ws_config.write_formula('D24', "=IF(B5=1,F18,D18)-G18")
 
 
-
-
+    # Feuille Info
     ws_infos = writer.sheets['Infos']
 
-    ws_infos["A30"] = " "
+    # --- TITRES (Ligne 30) ---
+    ws_infos.write('B30', "T° Ballon Chaud")
+    ws_infos.write('C30', "T° Ballon Froid")
+    ws_infos.write('D30', "T° Cellule")
+    ws_infos.write('E30', "T° ECORIUM Fond")
+    ws_infos.write('F30', "T° ECORIUM Bas")
+    ws_infos.write('G30', "T° ECORIUM Haut")
+    ws_infos.write('H30', "T° Pluie")
+    ws_infos.write('I30', "Hygromètrie")
+    ws_infos.write('J30', "CO2")
 
-    # --- TITRE Centre Gras ---
-    ws_infos["B30"] = "T° Ballon Chaud"
-    ws_infos["C30"] = "T° Ballon Froid"
-    ws_infos["D30"] = "T° Cellule"
-    ws_infos["E30"] = "T° ECORIUM Fond"
-    ws_infos["F30"] = "T° ECORIUM Bas"
-    ws_infos["G30"] = "T° ECORIUM Haut"
-    ws_infos["H30"] = "T° Pluie"
-    ws_infos["I30"] = "Hygromètrie"
-    ws_infos["J30"] = "CO2"
+    # --- ÉTIQUETTES (Colonne A) ---
+    ws_infos.write('A31', "Minimum")
+    ws_infos.write('A32', "Maximum")
+    ws_infos.write('A35', "Pas Arrêt")
+    ws_infos.write('A36', "Erreur T°")
+    ws_infos.write('A37', "Erreur H%")
 
-    # --- TITRE Gras ---
-    ws_infos["A31"] = "Minimum"
-    ws_infos["A32"] = "Maximum"
-    ws_infos["A35"] = "Pas Arrêt"
-    ws_infos["A36"] = "Erreur T°"
-    ws_infos["A37"] = "Erreur H%"
+    # --- FORMULES MINIMUM ---
+    ws_infos.write_formula('B31', "=MIN(Automate!BD:BD)")
+    ws_infos.write_formula('C31', "=MIN(Automate!BE:BE)")
+    ws_infos.write_formula('D31', "=MIN(Programmation!F:F)")
+    ws_infos.write_formula('E31', "=MIN(Programmation!H:H)")
+    ws_infos.write_formula('F31', "=MIN(Programmation!I:I)")
+    ws_infos.write_formula('G31', "=MIN(Programmation!J:J)")
+    ws_infos.write_formula('H31', "=MIN(Programmation!AZ:AZ)")
+    ws_infos.write_formula('I31', "=MIN(Programmation!L:L)")
+    ws_infos.write_formula('J31', "=MIN(Programmation!P:P)")
 
-    # --- Val Formule---
-    ws_infos["B31"] = "=MIN(Automate!BD:BD)"
-    ws_infos["C31"] = "=MIN(Automate!BE:BE)"
-    ws_infos["D31"] = "=MIN(Programmation!F:F)"
-    ws_infos["E31"] = "=MIN(Programmation!H:H)"
-    ws_infos["F31"] = "=MIN(Programmation!I:I)"
-    ws_infos["G31"] = "=MIN(Programmation!J:J)"
-    ws_infos["H31"] = "=MIN(Programmation!AZ:AZ)"
-    ws_infos["I31"] = "=MIN(Programmation!L:L)"
-    ws_infos["J31"] = "=MIN(Programmation!P:P)"
+    # --- FORMULES MAXIMUM ---
+    ws_infos.write_formula('B32', "=MAX(Automate!BD:BD)")
+    ws_infos.write_formula('C32', "=MAX(Automate!BE:BE)")
+    ws_infos.write_formula('D32', "=MAX(Programmation!F:F)")
+    ws_infos.write_formula('E32', "=MAX(Programmation!H:H)")
+    ws_infos.write_formula('F32', "=MAX(Programmation!I:I)")
+    ws_infos.write_formula('G32', "=MAX(Programmation!J:J)")
+    ws_infos.write_formula('H32', "=MAX(Programmation!AZ:AZ)")
+    ws_infos.write_formula('I32', "=MAX(Programmation!L:L)")
+    ws_infos.write_formula('J32', "=MAX(Programmation!P:P)")
 
-
-    ws_infos["B32"] = "=MAX(Automate!BD:BD)"
-    ws_infos["C32"] = "=MAX(Automate!BE:BE)"
-    ws_infos["D32"] = "=MAX(Programmation!F:F)"
-    ws_infos["E32"] = "=MAX(Programmation!H:H)"
-    ws_infos["F32"] = "=MAX(Programmation!I:I)"
-    ws_infos["G32"] = "=MAX(Programmation!J:J)"
-    ws_infos["H32"] = "=MAX(Programmation!AZ:AZ)"
-    ws_infos["I32"] = "=MAX(Programmation!L:L)"
-    ws_infos["J32"] = "=MAX(Programmation!P:P)"
-
-    ws_infos["B35"] = "=EQUIV(0;Programmation!BL:BL;0)"
-    ws_infos["B36"] = '=EQUIV("ERR";Programmation!BJ:BJ;0)'
-    ws_infos["B37"] = '=EQUIV("ERR";Programmation!BK:BK;0)'
-
-
+    # --- FORMULES DE RECHERCHE D'ERREURS ---
+    # Note : MATCH est l'équivalent anglais de EQUIV
+    ws_infos.write_formula('B35', "=MATCH(0,Programmation!BL:BL,0)")
+    ws_infos.write_formula('B36', '=MATCH("ERR",Programmation!BJ:BJ,0)')
+    ws_infos.write_formula('B37', '=MATCH("ERR",Programmation!BK:BK,0)')
 
 
 
@@ -308,28 +321,26 @@ with pd.ExcelWriter('Diez_Road_to_Ecolab.xlsx', engine='openpyxl') as writer:
 
 
 
-    # --- ÉLARGISSEMENT ---
-    ws_config.column_dimensions['A'].width = 35  # Large pour les textes
-    ws_config.column_dimensions['B'].width = 15  # Pour les valeurs 60, 0...
 
-    # Si tu veux aussi élargir Programmation (60+ colonnes)
-    ws_prog = writer.sheets['Programmation']
-    for col in ws_prog.columns:
-        column_letter = col[0].column_letter
-        ws_prog.column_dimensions[column_letter].width = 18
 
-    # Si tu veux aussi élargir Automate
-    ws_auto = writer.sheets['Automate']
-    for col in ws_auto.columns:
-        column_letter = col[0].column_letter
-        ws_auto.column_dimensions[column_letter].width = 18
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 end_time = time.time()
 execution_time = end_time - start_time
 
 
 print(f"Temps d'exécution total : {execution_time:.4f} secondes")
-
-
-
-
