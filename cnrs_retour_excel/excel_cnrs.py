@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import time
 import requests
-from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.styles import Alignment, Font, PatternFill, Border, Side
 
 # URL et paramètres
 url = "https://archive-api.open-meteo.com/v1/archive"
@@ -10,7 +10,7 @@ params = {
     "latitude": 52.52,
     "longitude": 13.41,
     "start_date": "2020-01-01",
-    "end_date": "2020-01-01",
+    "end_date": "2022-01-01",
     "hourly": "temperature_2m,relative_humidity_2m,dew_point_2m,precipitation,pressure_msl,surface_pressure,et0_fao_evapotranspiration,wind_speed_10m,wind_direction_10m,direct_radiation,direct_radiation_instant",
     "timezone" : "auto"
 }
@@ -20,10 +20,10 @@ params = {
 # Récupération des données
 response = requests.get(url, params=params)
 data = response.json()
-print(data)
+# print(data)
 print(len(data["hourly"]["time"]))
-print(data["hourly"]["temperature_2m"])
-print(data["hourly"]["relative_humidity_2m"])
+# print(data["hourly"]["temperature_2m"])
+# print(data["hourly"]["relative_humidity_2m"])
 
 start_time = time.time()
 
@@ -80,6 +80,23 @@ df_programmation[cols_parametres] = ma_liste_complete
 df_programmation['TEMP_CEL'] = data["hourly"]["temperature_2m"]
 df_programmation['HYG_CEL'] = data["hourly"]["relative_humidity_2m"]
 
+#tests valeurs Temp
+# On crée l'index décalé (2 + 31 = 33)
+idx_decale = (np.arange(2, n + 2) + 31).astype(str)
+# Construction de la formule avec IF, OR et des virgules
+df_programmation['tests valeurs Temp'] = (
+        np.char.add("=IF(OR(F", idx_decale) +
+        ">Config!$D$24,F" + idx_decale +
+        "<Config!$C$23,BL" + idx_excel +
+        "=0,BP" + idx_decale +
+        ">Config!$D$24,BP" + idx_decale +
+        "<Config!$C$23),\"ERR\",\"OK\")"
+)
+
+
+#tests valeurs Hum
+df_programmation['tests valeurs Hum'] = np.char.add("=IF(OR(L", idx_excel) + ",100,L" + idx_excel + "<7,BL" + idx_excel + "=0),\"ERR\",\"OK\")"
+
 ###### Automate ######
 
 # 3. Formules pour NUMERO_E (=Programmation!A2, A3, etc.)
@@ -129,7 +146,32 @@ with pd.ExcelWriter('Diez_Road_to_Ecolab.xlsx', engine='openpyxl') as writer:
     ws_config["B10"] = 5
     ws_config["B11"] = 5
     ws_config["E9"] = 5
-    
+
+    ws_config["B17"] = -6.5
+    ws_config["C17"] = -15
+    ws_config["D17"] = -10
+    ws_config["E17"] = -15
+    ws_config["F17"] = 5
+    ws_config["G17"] = -6
+
+    ws_config["B18"] = 10
+    ws_config["C18"] = 20
+    ws_config["D18"] = 55
+    ws_config["E18"] = 20
+    ws_config["F18"] = 55
+    ws_config["G18"] = 10
+
+    # --- Val Formule---
+    ws_config["B23"] = "=B17-G17"
+    ws_config["C23"] = "=SI(B5;E17;C17)-G17"
+    ws_config["D23"] = "=SI(B5;F17;D17)-G17"
+
+    ws_config["B24"] = "=B18-G18"
+    ws_config["C24"] = "=SI(B5;E18;C18)-G18"
+    ws_config["D24"] = "=SI(B5;F18;D18)-G18"
+
+
+
 
     # --- TITRE Gras ---
     ws_config['A9'] = "Fond"
@@ -137,6 +179,8 @@ with pd.ExcelWriter('Diez_Road_to_Ecolab.xlsx', engine='openpyxl') as writer:
     ws_config["A11"] = "Ceinture Haute"
     ws_config["A17"] = "Ballon Froid"
     ws_config["A18"] = "Ballon Chaud"
+    ws_config["A23"] = "Ballon Froid"
+    ws_config["A24"] = "Ballon Chaud"
 
     # --- TITRE Centre Gras ---
     ws_config['A4'] = "Anticipation (min)"
@@ -148,15 +192,26 @@ with pd.ExcelWriter('Diez_Road_to_Ecolab.xlsx', engine='openpyxl') as writer:
     ws_config["D16"] = "Maximum"
     ws_config["E16"] = "Minimum"
     ws_config["F16"] = "Maximum"
+    ws_config["C22"] = "Minimum"
+    ws_config["D22"] = "Maximum"
 
 
     # Fusion vide
     ws_config.merge_cells('A15:A16')
+    ws_config.merge_cells('A21:A22')
 
     # --- TITRE Fusion Centre Gras ---
+    ws_config.merge_cells('C21:D21')
+    cellule_temp = ws_config['C21']
+    cellule_temp.value = "Températures"
+
+    ws_config.merge_cells('B21:B22')
+    cellule_delta_temp_2 = ws_config['B21']
+    cellule_delta_temp_2.value = "Delta Températures (°C)"
 
     ws_config.merge_cells('G15:G16')
     celulle_offsets_automate = ws_config['G15']
+    celulle_offsets_automate.value = "Offsets Automate"
 
     ws_config.merge_cells('B15:B16')
     cellule_delta_temp_1 = ws_config['B15']
@@ -193,6 +248,62 @@ with pd.ExcelWriter('Diez_Road_to_Ecolab.xlsx', engine='openpyxl') as writer:
     cellule_reglage_thermo.fill = style_jaune_flash
     cellule_reglage_thermo.font = style_gras
     cellule_reglage_thermo.alignment = style_centre
+
+
+
+
+    ws_infos = writer.sheets['Infos']
+
+    ws_infos["A30"] = " "
+
+    # --- TITRE Centre Gras ---
+    ws_infos["B30"] = "T° Ballon Chaud"
+    ws_infos["C30"] = "T° Ballon Froid"
+    ws_infos["D30"] = "T° Cellule"
+    ws_infos["E30"] = "T° ECORIUM Fond"
+    ws_infos["F30"] = "T° ECORIUM Bas"
+    ws_infos["G30"] = "T° ECORIUM Haut"
+    ws_infos["H30"] = "T° Pluie"
+    ws_infos["I30"] = "Hygromètrie"
+    ws_infos["J30"] = "CO2"
+
+    # --- TITRE Gras ---
+    ws_infos["A31"] = "Minimum"
+    ws_infos["A32"] = "Maximum"
+    ws_infos["A35"] = "Pas Arrêt"
+    ws_infos["A36"] = "Erreur T°"
+    ws_infos["A37"] = "Erreur H%"
+
+    # --- Val Formule---
+    ws_infos["B31"] = "=MIN(Automate!BD:BD)"
+    ws_infos["C31"] = "=MIN(Automate!BE:BE)"
+    ws_infos["D31"] = "=MIN(Programmation!F:F)"
+    ws_infos["E31"] = "=MIN(Programmation!H:H)"
+    ws_infos["F31"] = "=MIN(Programmation!I:I)"
+    ws_infos["G31"] = "=MIN(Programmation!J:J)"
+    ws_infos["H31"] = "=MIN(Programmation!AZ:AZ)"
+    ws_infos["I31"] = "=MIN(Programmation!L:L)"
+    ws_infos["J31"] = "=MIN(Programmation!P:P)"
+
+
+    ws_infos["B32"] = "=MAX(Automate!BD:BD)"
+    ws_infos["C32"] = "=MAX(Automate!BE:BE)"
+    ws_infos["D32"] = "=MAX(Programmation!F:F)"
+    ws_infos["E32"] = "=MAX(Programmation!H:H)"
+    ws_infos["F32"] = "=MAX(Programmation!I:I)"
+    ws_infos["G32"] = "=MAX(Programmation!J:J)"
+    ws_infos["H32"] = "=MAX(Programmation!AZ:AZ)"
+    ws_infos["I32"] = "=MAX(Programmation!L:L)"
+    ws_infos["J32"] = "=MAX(Programmation!P:P)"
+
+    ws_infos["B35"] = "=EQUIV(0;Programmation!BL:BL;0)"
+    ws_infos["B36"] = '=EQUIV("ERR";Programmation!BJ:BJ;0)'
+    ws_infos["B37"] = '=EQUIV("ERR";Programmation!BK:BK;0)'
+
+
+
+
+
 
 
 
