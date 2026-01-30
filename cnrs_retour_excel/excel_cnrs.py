@@ -10,7 +10,7 @@ params = {
     "latitude": 52.52,
     "longitude": 13.41,
     "start_date": "2020-01-01",
-    "end_date": "2020-01-01",
+    "end_date": "2020-01-02",
     "hourly": "temperature_2m,relative_humidity_2m,dew_point_2m,precipitation,pressure_msl,surface_pressure,et0_fao_evapotranspiration,wind_speed_10m,wind_direction_10m,direct_radiation,direct_radiation_instant",
     "timezone" : "auto"
 }
@@ -165,12 +165,85 @@ df_automate['REGUL_HYG'] = "=Programmation!K" + idx_excel
 
 df_automate['HYG_CEL'] = "=IF(Programmation!L" + idx_excel + ">95,95,Programmation!L" + idx_excel + ")"
 
-df_automate['REGUL_PRESSION'] = "Programmation!M" + idx_excel
-df_automate['PRESSION'] = "Programmation!N" + idx_excel
-df_automate['REGUL_CO'] = "Programmation!O" + idx_excel
-df_automate['CO'] = "Programmation!O" + idx_excel
-df_automate['REGUL_O'] = "Programmation!O" + idx_excel
-df_automate['O'] = "Programmation!O" + idx_excel
+df_automate['REGUL_PRESSION'] = "=Programmation!M" + idx_excel
+df_automate['PRESSION'] = "=Programmation!N" + idx_excel
+df_automate['REGUL_CO'] = "=Programmation!O" + idx_excel
+df_automate['CO'] = "=Programmation!P" + idx_excel
+df_automate['REGUL_O'] = "=Programmation!Q" + idx_excel
+df_automate['O'] = "=Programmation!R" + idx_excel
+df_automate['REGUL_N'] = "=Programmation!S" + idx_excel
+df_automate['N'] = "=Programmation!T" + idx_excel
+df_automate['REGUL_X'] = "=Programmation!U" + idx_excel
+df_automate['X'] = "=Programmation!V" + idx_excel
+df_automate['HAUTEUR_ECOLUX'] = "=Programmation!W" + idx_excel
+df_automate['INTENSITE_ECOLUX'] = "=Programmation!X" + idx_excel
+df_automate['CONFIG_ECOLUX'] = "=Programmation!Y" + idx_excel
+df_automate['PLUIE'] = "=Programmation!Z" + idx_excel
+df_automate['VITESSE_VENT_PRINC'] = "=Programmation!AA" + idx_excel
+df_automate['VENT_LATERAL'] = (
+        "=Programmation!AB" + idx_excel +
+        "+Programmation!AC" + idx_excel + "*2" +
+        "+Programmation!AD" + idx_excel + "*4" +
+        "+Programmation!AE" + idx_excel + "*8"
+)
+df_automate['RENO_AIR'] = "=Programmation!AG" + idx_excel
+df_automate['CONFIG_MES_INCUB'] = "=Programmation!AJ" + idx_excel
+df_automate['ACTION_UN'] = "=Programmation!AK" + idx_excel
+df_automate['ACTION_DEUX'] = "=Programmation!AL" + idx_excel
+df_automate['ACTION_TROIS'] = "=Programmation!AM" + idx_excel
+df_automate['ACTION_QUATRE'] = "=Programmation!AN" + idx_excel
+df_automate['ACTION_CINQ']     = "=Programmation!AO" + idx_excel
+df_automate['ACTION_SIX']      = "=Programmation!AP" + idx_excel
+df_automate['ACTION_SEPT']     = "=Programmation!AQ" + idx_excel
+df_automate['ACTION_HUIT']     = "=Programmation!AR" + idx_excel
+df_automate['ACTION_NEUF']     = "=Programmation!AS" + idx_excel
+df_automate['ACTION_DIX']      = "=Programmation!AT" + idx_excel
+df_automate['ACTION_ONZE']     = "=Programmation!AU" + idx_excel
+df_automate['ACTION_DOUZE']    = "=Programmation!AV" + idx_excel
+df_automate['ACTION_TREIZE']   = "=Programmation!AW" + idx_excel
+df_automate['ACTION_QUATORZE'] = "=Programmation!AX" + idx_excel
+df_automate['ACTION_QUINZE']   = "=Programmation!AY" + idx_excel
+df_automate['TEMP_PLUIE'] = "=Programmation!AZ" + idx_excel + "*10"
+df_automate['CHROMATO']            = "=Programmation!BA" + idx_excel
+df_automate['EV_VIDANGE_ECORIUM']  = "=Programmation!BB" + idx_excel
+df_automate['EV_VIDANGE_CANIVEAU'] = "=Programmation!BC" + idx_excel
+df_automate['EV_VIDANGE_CLIM']     = "=Programmation!BD" + idx_excel
+df_automate['CONSIGNE_ESSAI']     = 10
+df_automate['P_VAP_SAT'] = (
+        "=611.213" +
+        "+43.53*POWER(Programmation!BP" + idx_excel + ",1)" +
+        "+1.598*POWER(Programmation!BP" + idx_excel + ",2)" +
+        "+0.0159*POWER(Programmation!BP" + idx_excel + ",3)" +
+        "+0.000567*POWER(Programmation!BP" + idx_excel + ",4)"
+)
+df_automate['PT_ROSEE'] = (
+        "=IF(K" + idx_excel + "=0,0," +
+        "-241*(LOG10(AY" + idx_excel + "*K" + idx_excel + "/100)-2.7887)/" +
+        "((LOG10(AY" + idx_excel + "*K" + idx_excel + "/100)-2.7887-7.625)))"
+)
+
+# On crée un index qui commence à 3 au lieu de 2
+# np.arange(3, n + 3) génère [3, 4, 5, ...]
+idx_automate_decale = np.arange(3, n + 3).astype(str)
+
+# Calcul de l'Humidité Spécifique avec le nouvel index
+df_automate['HS_PROGR'] = (
+        "=0.622*AY" + idx_automate_decale + "*K" + idx_automate_decale +
+        "/(10132500-AY" + idx_automate_decale + "*K" + idx_automate_decale + ")*1000"
+)
+
+df_automate['T_BALLON_CHAUD']     = 450
+df_automate['T_BALLON_FROID']     = 0
+df_automate['BALLON_CHAUD_REEL']     = 45
+df_automate['BALLON_FROID_REEL']     = 0
+
+# idx_excel contient ['2', '3', '4', ...]
+# On ajoute 31 pour obtenir ['33', '34', '35', ...]
+idx_progr = (np.arange(2, n + 2) + 31).astype(str)
+
+df_automate['Temp_progr'] = "=E" + idx_progr + "/10"
+df_automate['M_A'] = "=Programmation!BL" + idx_excel
+
 
 # Tu peux ajouter autant de colonnes que tu veux ici
 correspondances_titres = {
