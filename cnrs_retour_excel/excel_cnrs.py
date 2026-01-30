@@ -9,8 +9,8 @@ url = "https://archive-api.open-meteo.com/v1/archive"
 params = {
     "latitude": 52.52,
     "longitude": 13.41,
-    "start_date": "2020-01-01",
-    "end_date": "2020-01-02",
+    "start_date": "2013-12-01",
+    "end_date": "2025-12-31",
     "hourly": "temperature_2m,relative_humidity_2m,dew_point_2m,precipitation,pressure_msl,surface_pressure,et0_fao_evapotranspiration,wind_speed_10m,wind_direction_10m,direct_radiation,direct_radiation_instant",
     "timezone" : "auto"
 }
@@ -77,8 +77,8 @@ df_programmation[cols_parametres] = ma_liste_complete
 
 # 3. ON ÉCRASE UNIQUEMENT TEMP_CEL AVEC LES DONNÉES DE L'API
 # Comme n = len(data["hourly"]["temperature_2m"]), les tailles correspondent parfaitement
-# df_programmation['TEMP_CEL'] = data["hourly"]["temperature_2m"]
-# df_programmation['HYG_CEL'] = data["hourly"]["relative_humidity_2m"]
+df_programmation['TEMP_CEL'] = data["hourly"]["temperature_2m"]
+df_programmation['HYG_CEL'] = data["hourly"]["relative_humidity_2m"]
 
 #tests valeurs Temp
 # On crée l'index décalé (2 + 31 = 33)
